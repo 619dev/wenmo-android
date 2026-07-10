@@ -2,7 +2,10 @@
 .idea/
 **/build/
 local.properties
+keystore.properties
+signing/
+*.jks
+*.keystore
 *.iml
 .DS_Store
 engine/target/
-

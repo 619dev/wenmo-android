@@ -43,19 +43,22 @@ public final class WenmoInputMethodService extends InputMethodService {
 
         LinearLayout toolbar = row();
         composition = new TextView(this);
-        composition.setTextSize(18);
+        composition.setTextSize(16);
         composition.setTextColor(Color.rgb(32, 33, 36));
         composition.setGravity(Gravity.CENTER_VERTICAL);
-        toolbar.addView(composition, new LinearLayout.LayoutParams(0, dp(42), 1));
-        scriptToggle = key("简", v -> toggleScript());
-        toolbar.addView(scriptToggle, fixed(54, 42));
-        toolbar.addView(key("⌄", v -> requestHideSelf(0)), fixed(54, 42));
-        root.addView(toolbar);
+        composition.setPadding(dp(8), 0, dp(6), 0);
+        toolbar.addView(composition, new LinearLayout.LayoutParams(-2, dp(42)));
 
         HorizontalScrollView scroller = new HorizontalScrollView(this);
+        scroller.setHorizontalScrollBarEnabled(false);
         candidates = row();
         scroller.addView(candidates);
-        root.addView(scroller, new LinearLayout.LayoutParams(-1, dp(44)));
+        toolbar.addView(scroller, new LinearLayout.LayoutParams(0, dp(42), 1));
+
+        scriptToggle = key("简", v -> toggleScript());
+        toolbar.addView(scriptToggle, fixed(48, 42));
+        toolbar.addView(key("⌄", v -> requestHideSelf(0)), fixed(48, 42));
+        root.addView(toolbar);
 
         keyboardPanel = new LinearLayout(this);
         keyboardPanel.setOrientation(LinearLayout.VERTICAL);
@@ -153,12 +156,11 @@ public final class WenmoInputMethodService extends InputMethodService {
         addTextKeyRow("1", "2", "3", "+");
         addTextKeyRow("4", "5", "6", "-");
         addTextKeyRow("7", "8", "9", ".");
-        addTextKeyRow("(", "0", ")", ":");
 
         LinearLayout bottom = row();
         bottom.addView(key("ABC", v -> switchKeyboard(KeyboardMode.ALPHABETIC)), fixed(62, 48));
         bottom.addView(key("#+=", v -> switchKeyboard(KeyboardMode.SYMBOL)), fixed(58, 48));
-        bottom.addView(key("空格", v -> commitRaw(" ")), weightedKey());
+        bottom.addView(key("0", v -> commitRaw("0")), weightedKey());
         bottom.addView(key("⌫", v -> backspace()), fixed(58, 48));
         bottom.addView(key("回车", v -> enter()), fixed(68, 48));
         keyboardPanel.addView(bottom);
@@ -167,8 +169,7 @@ public final class WenmoInputMethodService extends InputMethodService {
     private void buildSymbolKeyboard() {
         addTextKeyRow("，", "。", "？", "！", "；", "：", "、", "…", "—", "·");
         addTextKeyRow("（", "）", "【", "】", "《", "》", "“", "”", "‘", "’");
-        addTextKeyRow("@", "#", "$", "%", "&", "*", "+", "-", "=", "_");
-        addTextKeyRow("/", "\\", "|", "~", "`", "^", "<", ">", "[", "]");
+        addTextKeyRow("@", "#", "$", "%", "&", "*", "+", "-", "=", "/");
 
         LinearLayout bottom = row();
         bottom.addView(key("ABC", v -> switchKeyboard(KeyboardMode.ALPHABETIC)), fixed(62, 48));
@@ -202,7 +203,7 @@ public final class WenmoInputMethodService extends InputMethodService {
         candidates.removeAllViews();
         if (keyboardMode == KeyboardMode.ALPHABETIC) {
             for (String candidate : engine.candidates()) {
-                candidates.addView(key(candidate, v -> select(candidate)), fixed(72, 42));
+                candidates.addView(key(candidate, v -> select(candidate)), fixed(64, 42));
             }
         }
     }
