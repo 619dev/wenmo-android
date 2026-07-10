@@ -4,6 +4,7 @@ import android.graphics.Color;
 import android.inputmethodservice.InputMethodService;
 import android.view.Gravity;
 import android.view.View;
+import android.view.WindowInsets;
 import android.view.inputmethod.InputConnection;
 import android.widget.Button;
 import android.widget.HorizontalScrollView;
@@ -13,16 +14,27 @@ import ink.wenmo.ime.engine.InputEngine;
 import ink.wenmo.ime.engine.LocalInputEngine;
 
 public final class WenmoInputMethodService extends InputMethodService {
-    private final InputEngine engine = new LocalInputEngine();
+    private InputEngine engine;
     private LinearLayout candidates;
     private TextView composition;
     private Button scriptToggle;
 
     @Override public View onCreateInputView() {
+        if (engine == null) engine = new LocalInputEngine(getApplicationContext());
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setPadding(dp(4), dp(4), dp(4), dp(6));
         root.setBackgroundColor(Color.rgb(231, 230, 226));
+        root.setOnApplyWindowInsetsListener((view, insets) -> {
+            int bottom;
+            if (android.os.Build.VERSION.SDK_INT >= 30) {
+                bottom = insets.getInsets(WindowInsets.Type.navigationBars()).bottom;
+            } else {
+                bottom = insets.getSystemWindowInsetBottom();
+            }
+            view.setPadding(dp(4), dp(4), dp(4), Math.max(dp(6), bottom + dp(4)));
+            return insets;
+        });
 
         LinearLayout toolbar = row();
         composition = new TextView(this);
@@ -62,6 +74,7 @@ public final class WenmoInputMethodService extends InputMethodService {
 
     @Override public void onStartInput(android.view.inputmethod.EditorInfo info, boolean restarting) {
         super.onStartInput(info, restarting);
+        if (engine == null) engine = new LocalInputEngine(getApplicationContext());
         engine.clear();
         refresh();
     }
@@ -135,4 +148,3 @@ public final class WenmoInputMethodService extends InputMethodService {
 
     private int dp(int value) { return Math.round(value * getResources().getDisplayMetrics().density); }
 }
-

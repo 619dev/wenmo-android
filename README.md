@@ -15,7 +15,7 @@
 
 - 可注册的 Android `InputMethodService`
 - 始终显示的收起按钮
-- 拼音组合串与小型示例候选集
+- 拼音组合串与 12 万余条离线简繁词语索引
 - 简体/繁体切换
 - 输入法启用和切换引导页
 - 独立、零依赖的 Rust 引擎原型
@@ -25,7 +25,7 @@
 使用 Android Studio 打开此目录，或在 Gradle Wrapper 可用后运行 `./gradlew assembleDebug`。
 Rust 引擎测试：`cargo test --manifest-path engine/Cargo.toml`。
 
-正式词库、注音解析、Rust JNI 接入和密码字段策略将在后续里程碑完成。
+注音解析、词频语言模型、Rust JNI 接入和密码字段策略将在后续里程碑完成。
 
 ## 开源许可证
 

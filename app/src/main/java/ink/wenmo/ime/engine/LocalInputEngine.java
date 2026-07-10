@@ -1,5 +1,11 @@
 package ink.wenmo.ime.engine;
 
+import android.content.Context;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -8,27 +14,15 @@ import java.util.Map;
 
 /** Temporary Android implementation. The stable API will be backed by the Rust engine. */
 public final class LocalInputEngine implements InputEngine {
-    private static final Map<String, List<String>> SIMPLIFIED = new HashMap<>();
-    private static final Map<String, List<String>> TRADITIONAL = new HashMap<>();
-    static {
-        SIMPLIFIED.put("ni", List.of("你", "呢", "泥", "拟"));
-        SIMPLIFIED.put("hao", List.of("好", "号", "浩", "豪"));
-        SIMPLIFIED.put("nihao", List.of("你好"));
-        SIMPLIFIED.put("wen", List.of("问", "文", "闻", "稳"));
-        SIMPLIFIED.put("mo", List.of("墨", "莫", "末", "默"));
-        SIMPLIFIED.put("wenmo", List.of("问墨", "文墨"));
-        SIMPLIFIED.put("zhongguo", List.of("中国"));
-        TRADITIONAL.put("ni", List.of("你", "呢", "泥", "擬"));
-        TRADITIONAL.put("hao", List.of("好", "號", "浩", "豪"));
-        TRADITIONAL.put("nihao", List.of("你好"));
-        TRADITIONAL.put("wen", List.of("問", "文", "聞", "穩"));
-        TRADITIONAL.put("mo", List.of("墨", "莫", "末", "默"));
-        TRADITIONAL.put("wenmo", List.of("問墨", "文墨"));
-        TRADITIONAL.put("zhongguo", List.of("中國"));
-    }
+    private final Map<String, List<String>> simplified = new HashMap<>();
+    private final Map<String, List<String>> traditionalWords = new HashMap<>();
 
     private final StringBuilder composition = new StringBuilder();
     private boolean traditional;
+
+    public LocalInputEngine(Context context) {
+        loadDictionary(context);
+    }
 
     @Override public void type(char value) {
         if (value >= 'a' && value <= 'z') composition.append(value);
@@ -40,10 +34,30 @@ public final class LocalInputEngine implements InputEngine {
     @Override public String composition() { return composition.toString(); }
     @Override public List<String> candidates() {
         if (composition.length() == 0) return Collections.emptyList();
-        return (traditional ? TRADITIONAL : SIMPLIFIED)
+        return (traditional ? traditionalWords : simplified)
             .getOrDefault(composition.toString().toLowerCase(Locale.ROOT), Collections.emptyList());
     }
     @Override public void setTraditional(boolean value) { traditional = value; }
     @Override public boolean isTraditional() { return traditional; }
-}
 
+    private void loadDictionary(Context context) {
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(
+                context.getAssets().open("cedict_pinyin.tsv"), StandardCharsets.UTF_8), 64 * 1024)) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                if (line.isEmpty() || line.charAt(0) == '#') continue;
+                String[] fields = line.split("\\t", 3);
+                if (fields.length != 3) continue;
+                add(simplified, fields[0], fields[1]);
+                add(traditionalWords, fields[0], fields[2]);
+            }
+        } catch (IOException error) {
+            throw new IllegalStateException("Bundled pinyin dictionary is unavailable", error);
+        }
+    }
+
+    private static void add(Map<String, List<String>> dictionary, String key, String word) {
+        List<String> values = dictionary.computeIfAbsent(key, ignored -> new ArrayList<>());
+        if (values.size() < 32 && !values.contains(word)) values.add(word);
+    }
+}
