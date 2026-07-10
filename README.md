@@ -28,6 +28,13 @@ Rust 引擎测试：`cargo test --manifest-path engine/Cargo.toml`。
 
 注音解析、词频语言模型、Rust JNI 接入和密码字段策略将在后续里程碑完成。
 
+## 捐助
+
+如果这个项目对你有用的话，请我喝罐可乐吧。
+<br>
+<img width=30% height=30% src="请我喝可乐.jpg" alt="qrcode">
+<br>
+
 ## 开源许可证
 
 问墨自行编写的代码和文档采用 [Apache License 2.0](LICENSE)。该许可证允许使用、修改、分发和商业使用，并包含明确的专利授权条款。
