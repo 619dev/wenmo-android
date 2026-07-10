@@ -3,6 +3,7 @@ package ink.wenmo.ime;
 import android.graphics.Color;
 import android.inputmethodservice.InputMethodService;
 import android.view.Gravity;
+import android.text.InputType;
 import android.view.View;
 import android.view.WindowInsets;
 import android.view.inputmethod.InputConnection;
@@ -16,8 +17,12 @@ import ink.wenmo.ime.engine.LocalInputEngine;
 public final class WenmoInputMethodService extends InputMethodService {
     private InputEngine engine;
     private LinearLayout candidates;
+    private LinearLayout keyboardPanel;
     private TextView composition;
     private Button scriptToggle;
+    private KeyboardMode keyboardMode = KeyboardMode.ALPHABETIC;
+
+    private enum KeyboardMode { ALPHABETIC, NUMBER, SYMBOL }
 
     @Override public View onCreateInputView() {
         if (engine == null) engine = new LocalInputEngine(getApplicationContext());
@@ -52,22 +57,10 @@ public final class WenmoInputMethodService extends InputMethodService {
         scroller.addView(candidates);
         root.addView(scroller, new LinearLayout.LayoutParams(-1, dp(44)));
 
-        String[] rows = {"qwertyuiop", "asdfghjkl", "zxcvbnm"};
-        for (String letters : rows) {
-            LinearLayout row = row();
-            for (char letter : letters.toCharArray()) {
-                row.addView(key(String.valueOf(letter), v -> type(letter)), new LinearLayout.LayoutParams(0, dp(48), 1));
-            }
-            root.addView(row);
-        }
-
-        LinearLayout bottom = row();
-        bottom.addView(key("🌐", v -> switchToNextInputMethod(false)), fixed(54, 48));
-        bottom.addView(key("123", v -> commitRaw("123")), fixed(62, 48));
-        bottom.addView(key("空格", v -> space()), new LinearLayout.LayoutParams(0, dp(48), 1));
-        bottom.addView(key("⌫", v -> backspace()), fixed(62, 48));
-        bottom.addView(key("回车", v -> enter()), fixed(68, 48));
-        root.addView(bottom);
+        keyboardPanel = new LinearLayout(this);
+        keyboardPanel.setOrientation(LinearLayout.VERTICAL);
+        root.addView(keyboardPanel, new LinearLayout.LayoutParams(-1, -2));
+        showKeyboard(keyboardMode);
         refresh();
         return root;
     }
@@ -76,6 +69,14 @@ public final class WenmoInputMethodService extends InputMethodService {
         super.onStartInput(info, restarting);
         if (engine == null) engine = new LocalInputEngine(getApplicationContext());
         engine.clear();
+        int inputClass = info.inputType & InputType.TYPE_MASK_CLASS;
+        if (inputClass == InputType.TYPE_CLASS_NUMBER
+                || inputClass == InputType.TYPE_CLASS_PHONE
+                || inputClass == InputType.TYPE_CLASS_DATETIME) {
+            showKeyboard(KeyboardMode.NUMBER);
+        } else {
+            showKeyboard(KeyboardMode.ALPHABETIC);
+        }
         refresh();
     }
 
@@ -110,6 +111,82 @@ public final class WenmoInputMethodService extends InputMethodService {
         if (connection != null) connection.commitText(value, 1);
     }
 
+    private void switchKeyboard(KeyboardMode mode) {
+        if (keyboardMode == KeyboardMode.ALPHABETIC && mode != KeyboardMode.ALPHABETIC) {
+            if (!engine.candidates().isEmpty()) select(engine.candidates().get(0));
+            else if (!engine.composition().isEmpty()) select(engine.composition());
+        }
+        showKeyboard(mode);
+        refresh();
+    }
+
+    private void showKeyboard(KeyboardMode mode) {
+        keyboardMode = mode;
+        if (keyboardPanel == null) return;
+        keyboardPanel.removeAllViews();
+        switch (mode) {
+            case ALPHABETIC -> buildAlphabeticKeyboard();
+            case NUMBER -> buildNumberKeyboard();
+            case SYMBOL -> buildSymbolKeyboard();
+        }
+    }
+
+    private void buildAlphabeticKeyboard() {
+        for (String letters : new String[]{"qwertyuiop", "asdfghjkl", "zxcvbnm"}) {
+            LinearLayout keyRow = row();
+            for (char letter : letters.toCharArray()) {
+                keyRow.addView(key(String.valueOf(letter), v -> type(letter)), weightedKey());
+            }
+            keyboardPanel.addView(keyRow);
+        }
+        LinearLayout bottom = row();
+        bottom.addView(key("🌐", v -> switchToNextInputMethod(false)), fixed(48, 48));
+        bottom.addView(key("123", v -> switchKeyboard(KeyboardMode.NUMBER)), fixed(52, 48));
+        bottom.addView(key("符", v -> switchKeyboard(KeyboardMode.SYMBOL)), fixed(48, 48));
+        bottom.addView(key("空格", v -> space()), weightedKey());
+        bottom.addView(key("⌫", v -> backspace()), fixed(54, 48));
+        bottom.addView(key("回车", v -> enter()), fixed(62, 48));
+        keyboardPanel.addView(bottom);
+    }
+
+    private void buildNumberKeyboard() {
+        addTextKeyRow("1", "2", "3", "+");
+        addTextKeyRow("4", "5", "6", "-");
+        addTextKeyRow("7", "8", "9", ".");
+        addTextKeyRow("(", "0", ")", ":");
+
+        LinearLayout bottom = row();
+        bottom.addView(key("ABC", v -> switchKeyboard(KeyboardMode.ALPHABETIC)), fixed(62, 48));
+        bottom.addView(key("#+=", v -> switchKeyboard(KeyboardMode.SYMBOL)), fixed(58, 48));
+        bottom.addView(key("空格", v -> commitRaw(" ")), weightedKey());
+        bottom.addView(key("⌫", v -> backspace()), fixed(58, 48));
+        bottom.addView(key("回车", v -> enter()), fixed(68, 48));
+        keyboardPanel.addView(bottom);
+    }
+
+    private void buildSymbolKeyboard() {
+        addTextKeyRow("，", "。", "？", "！", "；", "：", "、", "…", "—", "·");
+        addTextKeyRow("（", "）", "【", "】", "《", "》", "“", "”", "‘", "’");
+        addTextKeyRow("@", "#", "$", "%", "&", "*", "+", "-", "=", "_");
+        addTextKeyRow("/", "\\", "|", "~", "`", "^", "<", ">", "[", "]");
+
+        LinearLayout bottom = row();
+        bottom.addView(key("ABC", v -> switchKeyboard(KeyboardMode.ALPHABETIC)), fixed(62, 48));
+        bottom.addView(key("123", v -> switchKeyboard(KeyboardMode.NUMBER)), fixed(58, 48));
+        bottom.addView(key("空格", v -> commitRaw(" ")), weightedKey());
+        bottom.addView(key("⌫", v -> backspace()), fixed(58, 48));
+        bottom.addView(key("回车", v -> enter()), fixed(68, 48));
+        keyboardPanel.addView(bottom);
+    }
+
+    private void addTextKeyRow(String... labels) {
+        LinearLayout keyRow = row();
+        for (String label : labels) {
+            keyRow.addView(key(label, v -> commitRaw(label)), weightedKey());
+        }
+        keyboardPanel.addView(keyRow);
+    }
+
     private void toggleScript() {
         engine.setTraditional(!engine.isTraditional());
         refresh();
@@ -117,11 +194,16 @@ public final class WenmoInputMethodService extends InputMethodService {
 
     private void refresh() {
         if (composition == null || candidates == null) return;
-        composition.setText(engine.composition());
+        if (keyboardMode == KeyboardMode.ALPHABETIC) composition.setText(engine.composition());
+        else if (keyboardMode == KeyboardMode.NUMBER) composition.setText("数字");
+        else composition.setText("常用符号");
         scriptToggle.setText(engine.isTraditional() ? "繁" : "简");
+        scriptToggle.setVisibility(keyboardMode == KeyboardMode.ALPHABETIC ? View.VISIBLE : View.INVISIBLE);
         candidates.removeAllViews();
-        for (String candidate : engine.candidates()) {
-            candidates.addView(key(candidate, v -> select(candidate)), fixed(72, 42));
+        if (keyboardMode == KeyboardMode.ALPHABETIC) {
+            for (String candidate : engine.candidates()) {
+                candidates.addView(key(candidate, v -> select(candidate)), fixed(72, 42));
+            }
         }
     }
 
@@ -144,6 +226,10 @@ public final class WenmoInputMethodService extends InputMethodService {
 
     private LinearLayout.LayoutParams fixed(int width, int height) {
         return new LinearLayout.LayoutParams(dp(width), dp(height));
+    }
+
+    private LinearLayout.LayoutParams weightedKey() {
+        return new LinearLayout.LayoutParams(0, dp(48), 1);
     }
 
     private int dp(int value) { return Math.round(value * getResources().getDisplayMetrics().density); }
