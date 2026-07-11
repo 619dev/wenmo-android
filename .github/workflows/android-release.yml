@@ -50,10 +50,11 @@ jobs:
     - name: 配置签名密钥
       if: steps.check_secrets.outputs.has_secrets == 'true'
       run: |
-        # 解码base64编码的密钥文件
+        # 解码base64编码的密钥文件，保存在根目录下
         echo "${{ secrets.KEYSTORE_FILE }}" | base64 -d > wenmo-release.jks
 
         # 创建keystore.properties
+        # 这里的 storeFile 可以写成相对路径，在 build.gradle.kts 中我们增加了双重相对路径（对根项目和对子项目）解析来确保安全
         echo "storeFile=wenmo-release.jks" > keystore.properties
         echo "storePassword=${{ secrets.KEYSTORE_PASSWORD }}" >> keystore.properties
         echo "keyAlias=${{ secrets.KEY_ALIAS }}" >> keystore.properties

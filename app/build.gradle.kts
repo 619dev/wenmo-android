@@ -6,7 +6,14 @@ val keystoreProperties = Properties()
 val hasKeystoreProperties = keystorePropertiesFile.exists() && run {
     try {
         keystoreProperties.load(FileInputStream(keystorePropertiesFile))
-        keystoreProperties.containsKey("storeFile") &&
+        val storeFileValue = keystoreProperties["storeFile"] as? String
+        val storeFileExists = if (storeFileValue != null) {
+            // Check if storeFile path exists relative to root or app directory
+            rootProject.file(storeFileValue).exists() || project.file(storeFileValue).exists()
+        } else {
+            false
+        }
+        storeFileExists &&
         keystoreProperties.containsKey("storePassword") &&
         keystoreProperties.containsKey("keyAlias") &&
         keystoreProperties.containsKey("keyPassword")
@@ -34,7 +41,14 @@ android {
     signingConfigs {
         create("release") {
             if (hasKeystoreProperties) {
-                storeFile = file(keystoreProperties["storeFile"] as String)
+                val storeFileValue = keystoreProperties["storeFile"] as String
+                // Dynamically resolve relative paths correctly depending on where the file exists
+                val resolvedStoreFile = if (rootProject.file(storeFileValue).exists()) {
+                    rootProject.file(storeFileValue)
+                } else {
+                    project.file(storeFileValue)
+                }
+                storeFile = resolvedStoreFile
                 storePassword = keystoreProperties["storePassword"] as String
                 keyAlias = keystoreProperties["keyAlias"] as String
                 keyPassword = keystoreProperties["keyPassword"] as String
