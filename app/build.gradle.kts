@@ -3,8 +3,16 @@ import java.util.Properties
 
 val keystorePropertiesFile = rootProject.file("keystore.properties")
 val keystoreProperties = Properties()
-if (keystorePropertiesFile.exists()) {
-    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+val hasKeystoreProperties = keystorePropertiesFile.exists() && run {
+    try {
+        keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+        keystoreProperties.containsKey("storeFile") &&
+        keystoreProperties.containsKey("storePassword") &&
+        keystoreProperties.containsKey("keyAlias") &&
+        keystoreProperties.containsKey("keyPassword")
+    } catch (e: Exception) {
+        false
+    }
 }
 
 plugins {
@@ -25,7 +33,7 @@ android {
 
     signingConfigs {
         create("release") {
-            if (keystorePropertiesFile.exists()) {
+            if (hasKeystoreProperties) {
                 storeFile = file(keystoreProperties["storeFile"] as String)
                 storePassword = keystoreProperties["storePassword"] as String
                 keyAlias = keystoreProperties["keyAlias"] as String
@@ -40,11 +48,14 @@ android {
 
     buildTypes {
         release {
-            require(keystorePropertiesFile.exists()) {
-                "缺少 keystore.properties，无法构建签名 Release APK"
+            if (hasKeystoreProperties) {
+                signingConfig = signingConfigs.getByName("release")
+            } else {
+                // If keystore is not available, we don't apply the signing config
+                // This allows building unsigned release APKs or fallbacks cleanly in CI
+                signingConfig = null
             }
             isMinifyEnabled = true
-            signingConfig = signingConfigs.getByName("release")
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
