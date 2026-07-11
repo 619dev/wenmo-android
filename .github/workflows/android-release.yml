@@ -90,7 +90,7 @@ jobs:
       id: changelog
       run: |
         echo "CHANGELOG<<EOF" >> $GITHUB_OUTPUT
-        echo "## 🚀 温墨输入法 (Wenmo IME) v${{ env.VERSION }}" >> $GITHUB_OUTPUT
+        echo "## 🚀 问墨输入法 (Wenmo IME) v${{ env.VERSION }}" >> $GITHUB_OUTPUT
         echo "" >> $GITHUB_OUTPUT
         echo "### 📱 应用信息" >> $GITHUB_OUTPUT
         echo "- **版本号**: ${{ env.VERSION }}" >> $GITHUB_OUTPUT
@@ -105,7 +105,7 @@ jobs:
         echo "### 📥 安装说明" >> $GITHUB_OUTPUT
         echo "1. 下载 APK 文件" >> $GITHUB_OUTPUT
         echo "2. 在设备上启用 \"未知来源\" 安装" >> $GITHUB_OUTPUT
-        echo "3. 安装并激活输入法，在系统设置中切换为温墨输入法" >> $GITHUB_OUTPUT
+        echo "3. 安装并激活输入法，在系统设置中切换为问墨输入法" >> $GITHUB_OUTPUT
         echo "EOF" >> $GITHUB_OUTPUT
 
     - name: 创建GitHub Release
