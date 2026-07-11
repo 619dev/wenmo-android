@@ -1,0 +1,45 @@
+name: Android CI - Build APK
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v4
+
+    - name: 设置JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        cache: gradle
+
+    - name: 设置Gradle Wrapper
+      uses: gradle/gradle-build-action@v2
+
+    - name: 授予Gradle执行权限
+      run: chmod +x gradlew
+
+    - name: 构建调试版APK
+      run: ./gradlew assembleDebug --stacktrace
+
+    - name: 上传调试版APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: wenmo-debug
+        path: app/build/outputs/apk/debug/app-debug.apk
+
+    - name: 构建信息
+      run: |
+        echo "🎉 构建完成！"
+        echo "📱 应用包名: ink.wenmo.ime"
+        echo "📦 APK大小: $(du -h app/build/outputs/apk/debug/app-debug.apk | cut -f1)"
+        echo "✅ 版本: 1.0-DEBUG"
