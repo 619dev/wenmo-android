@@ -3,8 +3,23 @@ import java.util.Properties
 
 val keystorePropertiesFile = rootProject.file("keystore.properties")
 val keystoreProperties = Properties()
-if (keystorePropertiesFile.exists()) {
-    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+val hasKeystoreProperties = keystorePropertiesFile.exists() && run {
+    try {
+        keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+        val storeFileValue = keystoreProperties["storeFile"] as? String
+        val storeFileExists = if (storeFileValue != null) {
+            // Check if storeFile path exists relative to root or app directory
+            rootProject.file(storeFileValue).exists() || project.file(storeFileValue).exists()
+        } else {
+            false
+        }
+        storeFileExists &&
+        keystoreProperties.containsKey("storePassword") &&
+        keystoreProperties.containsKey("keyAlias") &&
+        keystoreProperties.containsKey("keyPassword")
+    } catch (e: Exception) {
+        false
+    }
 }
 
 plugins {
@@ -25,8 +40,15 @@ android {
 
     signingConfigs {
         create("release") {
-            if (keystorePropertiesFile.exists()) {
-                storeFile = file(keystoreProperties["storeFile"] as String)
+            if (hasKeystoreProperties) {
+                val storeFileValue = keystoreProperties["storeFile"] as String
+                // Dynamically resolve relative paths correctly depending on where the file exists
+                val resolvedStoreFile = if (rootProject.file(storeFileValue).exists()) {
+                    rootProject.file(storeFileValue)
+                } else {
+                    project.file(storeFileValue)
+                }
+                storeFile = resolvedStoreFile
                 storePassword = keystoreProperties["storePassword"] as String
                 keyAlias = keystoreProperties["keyAlias"] as String
                 keyPassword = keystoreProperties["keyPassword"] as String
@@ -40,11 +62,14 @@ android {
 
     buildTypes {
         release {
-            require(keystorePropertiesFile.exists()) {
-                "缺少 keystore.properties，无法构建签名 Release APK"
+            if (hasKeystoreProperties) {
+                signingConfig = signingConfigs.getByName("release")
+            } else {
+                // If keystore is not available, we don't apply the signing config
+                // This allows building unsigned release APKs or fallbacks cleanly in CI
+                signingConfig = null
             }
             isMinifyEnabled = true
-            signingConfig = signingConfigs.getByName("release")
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
